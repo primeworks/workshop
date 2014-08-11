@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+        <record id="acquirer_form_voguepay" model="ir.ui.view">
+            <field name="name">acquirer.form.voguepay</field>
+            <field name="model">payment.acquirer</field>
+            <field name="inherit_id" ref="payment.acquirer_form"/>
+            <field name="arch" type="xml">
+                <xpath expr='//group[@name="acquirer_display"]' position='after'>
+                    <group attrs="{'invisible': [('provider', '!=', 'voguepay')]}">
+                        <group>
+                            <group>
+                                <field name="voguepay_email_account"/>
+                                <field name="voguepay_seller_account"/>
+                                <field name="voguepay_use_ipn"/>
+                                <field name="voguepay_api_enabled"
+                                    invisible="1"/> <!-- WIP in saas-3 -->
+                                <field name="voguepay_api_username"
+                                    invisible="1"/> <!-- WIP in saas-3 -->
+                                <field name="voguepay_api_password"
+                                    invisible="1"/> <!-- WIP in saas-3 -->
+                            </group>
+                        </group>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="transaction_form_voguepay" model="ir.ui.view">
+            <field name="name">acquirer.transaction.form.voguepay</field>
+            <field name="model">payment.transaction</field>
+            <field name="inherit_id" ref="payment.transaction_form"/>
+            <field name="arch" type="xml">
+                <xpath expr='//notebook' position='inside'>
+                    <page string="VoguePay TX Details">
+                        <group>
+                            <field name="voguepay_txn_id"/>
+                            <field name="voguepay_txn_type"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</openerp>

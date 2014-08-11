@@ -1,0 +1,146 @@
+<?php
+
+/**
+ * @file
+ * Installation file for Paga, primarily for the logging of IPNs.
+
+/**
+ * Implements hook_requirements().
+ */
+function uc_paga_requirements($phase) {
+  $t = get_t();
+
+  $has_curl = function_exists('curl_init');
+
+  // Paga WPP requires cURL.
+  if (variable_get('uc_pg_paga_wpp_enabled', TRUE)) {
+    $requirements['uc_paga_curl'] = array(
+      'title' => $t('cURL'),
+      'value' => $has_curl ? $t('Enabled') : $t('Not found'),
+    );
+    if (!$has_curl) {
+      $requirements['uc_paga_curl']['severity'] = REQUIREMENT_ERROR;
+      $requirements['uc_paga_curl']['description'] = $t("Paga WPP requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php'));
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_schema().
+ */
+function uc_paga_schema() {
+  $schema = array();
+
+  $schema['uc_payment_paga_ipn'] = array(
+    'description' => 'Logs Paga Instant Payment Notifications.',
+    'fields' => array(
+      'order_id' => array(
+        'description' => 'The order ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'txn_id' => array(
+        'description' => 'The transaction ID from Paga.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'txn_type' => array(
+        'description' => 'The transaction type from Paga.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'mc_gross' => array(
+        'description' => 'The payment amount from Paga.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'status' => array(
+        'description' => 'The IPN status from Paga.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'receiver_email' => array(
+        'description' => 'The e-mail address of the Paga account.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'payer_email' => array(
+        'description' => 'The e-mail address of the buyer.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'received' => array(
+        'description' => 'The IPN receipt timestamp.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'order_id' => array('order_id'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function uc_paga_install() {
+  drupal_install_schema('uc_paga');
+
+  $t = get_t();
+  db_query("INSERT INTO {uc_order_statuses} (order_status_id, title, state, weight, locked) VALUES ('paga_pending', '%s', 'post_checkout', 7, 1);", $t('Paga pending'));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uc_paga_uninstall() {
+  drupal_uninstall_schema('uc_paga');
+  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_paga_%%'");
+  db_query("UPDATE {uc_order_statuses} SET locked = 0 WHERE order_status_id = 'paga_pending'");
+}
+
+/**
+ * Implements hook_update_last_removed().
+ */
+function uc_paga_update_last_removed() {
+  return 2;
+}
+
+function uc_paga_update_6000() {
+  $ret = array();
+
+  db_drop_index($ret, 'uc_payment_paga_ipn', 'order_id');
+  db_change_field($ret, 'uc_payment_paga_ipn', 'order_id', 'order_id', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0), array('indexes' => array('order_id' => array('order_id'))));
+  db_change_field($ret, 'uc_payment_paga_ipn', 'received', 'received', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0));
+
+  return $ret;
+}
+
+function uc_paga_update_6200() {
+  $ret = array();
+
+  $ret[] = update_sql("UPDATE {uc_order_statuses} SET state = 'post_checkout' WHERE order_status_id = 'paga_pending'");
+
+  return $ret;
+}
